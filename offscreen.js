@@ -75,7 +75,7 @@ pose.onResults((results) => {
     if (isLocked) {
       isLocked = false;
       slouchCounter = 0;
-      unlockGraceFrames = 5; // Duy trì gửi thêm 5 frames để hiển thị tư thế chuẩn xanh lá trước khi đóng
+      unlockGraceFrames = 8; // Duy trì gửi thêm 8 frames (~0.8s) để hiển thị tư thế chuẩn xanh lá trước khi đóng overlay
       console.log(">>> ✅ NGỒI THẲNG TRỞ LẠI -> ĐÃ GỬI LỆNH MỞ KHÓA! <<<");
       chrome.runtime.sendMessage({ action: "TRIGGER_UNLOCK" }).catch(() => {});
     } else {
@@ -218,7 +218,8 @@ async function startWebcamLoop() {
           chrome.runtime.sendMessage({
             action: "PREVIEW_FRAME",
             dataUrl: frameData,
-            isLocked: isLocked
+            isLocked: isLocked,
+            unlockGrace: unlockGraceFrames > 0
           }).catch(() => { });
         } catch (canvasErr) {
           console.warn("Lỗi render preview frame:", canvasErr);

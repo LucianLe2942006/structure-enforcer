@@ -1,9 +1,16 @@
 (() => {
-    if (window.__POSTURE_ENFORCER_INJECTED__) return;
-    window.__POSTURE_ENFORCER_INJECTED__ = true;
-
     const OVERLAY_ID = "spine-guard-eos-blocker";
     const STYLES_ID = "spine-guard-eos-styles";
+
+    // Nếu script được tiêm lại (khi reload extension), dọn dẹp listener cũ và overlay cũ
+    if (window.__POSTURE_ENFORCER_MSG_LISTENER__) {
+        try {
+            chrome.runtime.onMessage.removeListener(window.__POSTURE_ENFORCER_MSG_LISTENER__);
+        } catch (e) { }
+    }
+    const oldOverlay = document.getElementById(OVERLAY_ID);
+    if (oldOverlay) oldOverlay.remove();
+
     console.log("🛡️ Posture Enforcer content script đã nạp thành công trên trang này!");
 
     function injectStyles() {
@@ -15,11 +22,9 @@
                 0% { opacity: 0; transform: scale(0.9) translateY(20px); }
                 100% { opacity: 1; transform: scale(1) translateY(0); }
             }
-            @keyframes posture-shake {
-                10%, 90% { transform: translate3d(-1px, 0, 0); }
-                20%, 80% { transform: translate3d(2px, 0, 0); }
-                30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
-                40%, 60% { transform: translate3d(3px, 0, 0); }
+            @keyframes posture-pulse {
+                0% { box-shadow: 0 0 20px rgba(255, 71, 87, 0.3); border-color: rgba(255, 71, 87, 0.6); }
+                100% { box-shadow: 0 0 45px rgba(255, 71, 87, 0.7); border-color: #ff4757; }
             }
         `;
         document.head.appendChild(style);
@@ -36,7 +41,7 @@
             inset: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
-            background-color: rgba(10, 12, 16, 0.9) !important;
+            background-color: rgba(10, 12, 16, 0.92) !important;
             backdrop-filter: blur(24px) !important;
             -webkit-backdrop-filter: blur(24px) !important;
             z-index: 2147483647 !important;
@@ -107,18 +112,20 @@
 
         // Video Preview Container
         const previewContainer = document.createElement("div");
+        previewContainer.id = "posture-lock-preview-container";
         previewContainer.style.cssText = `
             position: relative !important;
             width: 100% !important;
             aspect-ratio: 4 / 3 !important;
             background: #090d12 !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border: 1.5px solid rgba(255, 71, 87, 0.6) !important;
             border-radius: 16px !important;
             overflow: hidden !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             box-sizing: border-box !important;
+            box-shadow: 0 0 25px rgba(255, 71, 87, 0.25) !important;
         `;
 
         // Loading Placeholder
@@ -166,9 +173,40 @@
             transition: all 0.25s ease !important;
         `;
 
+        // Embedded Warning Banner inside Preview
+        const warningBanner = document.createElement("div");
+        warningBanner.id = "posture-lock-banner";
+        warningBanner.style.cssText = `
+            position: absolute !important;
+            bottom: 10px !important;
+            left: 10px !important;
+            right: 10px !important;
+            background: rgba(26, 10, 14, 0.92) !important;
+            backdrop-filter: blur(14px) !important;
+            -webkit-backdrop-filter: blur(14px) !important;
+            border: 1px solid rgba(255, 71, 87, 0.6) !important;
+            border-radius: 12px !important;
+            padding: 8px 12px !important;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6) !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            z-index: 10 !important;
+            pointer-events: none !important;
+            transition: all 0.25s ease !important;
+        `;
+        warningBanner.innerHTML = `
+            <span style="font-size: 20px;">⚠️</span>
+            <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
+                <strong style="font-size:12px; font-weight:800; color:#ff7b72; letter-spacing:0.3px;">CẢNH BÁO SAI TƯ THẾ!</strong>
+                <span style="font-size:11px; color:#c9d1d9;">Bạn đang cúi gục đầu hoặc gù lưng. Hãy nâng cằm lên!</span>
+            </div>
+        `;
+
         previewContainer.appendChild(placeholder);
         previewContainer.appendChild(previewImg);
         previewContainer.appendChild(pill);
+        previewContainer.appendChild(warningBanner);
 
         // Footer Guidance
         const footerText = document.createElement("div");
@@ -206,7 +244,7 @@
         }
     }
 
-    chrome.runtime.onMessage.addListener((request) => {
+    const messageHandler = (request) => {
         if (request.action === "TRIGGER_LOCK") {
             showLockOverlay();
         } else if (request.action === "TRIGGER_UNLOCK") {
@@ -218,6 +256,8 @@
             const img = document.getElementById("posture-lock-preview-img");
             const placeholder = document.getElementById("posture-lock-placeholder");
             const pill = document.getElementById("posture-lock-pill");
+            const banner = document.getElementById("posture-lock-banner");
+            const container = document.getElementById("posture-lock-preview-container");
 
             if (img) {
                 img.src = request.dataUrl;
@@ -225,21 +265,56 @@
                 if (placeholder) placeholder.style.display = "none";
             }
 
-            if (pill) {
-                if (request.isLocked) {
+            if (request.isLocked) {
+                if (pill) {
                     pill.style.background = "rgba(40, 10, 15, 0.88)";
                     pill.style.color = "#ff4757";
                     pill.style.borderColor = "rgba(255, 71, 87, 0.5)";
                     pill.innerText = "⚠️ ĐANG GÙ LƯNG";
-                } else {
+                }
+                if (banner) {
+                    banner.style.background = "rgba(26, 10, 14, 0.92)";
+                    banner.style.borderColor = "rgba(255, 71, 87, 0.6)";
+                    banner.innerHTML = `
+                        <span style="font-size: 20px;">⚠️</span>
+                        <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
+                            <strong style="font-size:12px; font-weight:800; color:#ff7b72; letter-spacing:0.3px;">CẢNH BÁO SAI TƯ THẾ!</strong>
+                            <span style="font-size:11px; color:#c9d1d9;">Bạn đang cúi gục đầu hoặc gù lưng. Hãy nâng cằm lên!</span>
+                        </div>
+                    `;
+                }
+                if (container) {
+                    container.style.borderColor = "rgba(255, 71, 87, 0.6)";
+                    container.style.boxShadow = "0 0 25px rgba(255, 71, 87, 0.35)";
+                }
+            } else {
+                if (pill) {
                     pill.style.background = "rgba(10, 30, 20, 0.88)";
                     pill.style.color = "#2ed573";
                     pill.style.borderColor = "rgba(46, 213, 115, 0.5)";
                     pill.innerText = "🟢 TƯ THẾ CHUẨN";
                 }
+                if (banner) {
+                    banner.style.background = "rgba(10, 30, 20, 0.92)";
+                    banner.style.borderColor = "rgba(46, 213, 115, 0.6)";
+                    banner.innerHTML = `
+                        <span style="font-size: 20px;">🟢</span>
+                        <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
+                            <strong style="font-size:12px; font-weight:800; color:#2ed573; letter-spacing:0.3px;">TƯ THẾ ĐÃ CHUẨN!</strong>
+                            <span style="font-size:11px; color:#c9d1d9;">Đang tự động mở khóa màn hình...</span>
+                        </div>
+                    `;
+                }
+                if (container) {
+                    container.style.borderColor = "rgba(46, 213, 115, 0.6)";
+                    container.style.boxShadow = "0 0 25px rgba(46, 213, 115, 0.35)";
+                }
             }
         }
-    });
+    };
+
+    window.__POSTURE_ENFORCER_MSG_LISTENER__ = messageHandler;
+    chrome.runtime.onMessage.addListener(messageHandler);
 
     // Tự động kiểm tra trạng thái khóa ngay khi vừa nạp trang
     chrome.runtime.sendMessage({ action: "GET_LOCK_STATE" }, (response) => {

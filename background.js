@@ -116,7 +116,16 @@ function broadcastLockState(isLocked) {
       if (tab.id) {
         chrome.tabs.sendMessage(tab.id, {
           action: isLocked ? "TRIGGER_LOCK" : "TRIGGER_UNLOCK"
-        }).catch(() => { });
+        }).catch(() => {
+          if (isLocked && tab.url && (tab.url.startsWith("http://") || tab.url.startsWith("https://"))) {
+            chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['content.js']
+            }).then(() => {
+              chrome.tabs.sendMessage(tab.id, { action: "TRIGGER_LOCK" }).catch(() => { });
+            }).catch(() => { });
+          }
+        });
       }
     }
   });
@@ -174,8 +183,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       threshold: message.threshold
     }).catch(() => { });
   } else if (message.action === "PREVIEW_FRAME") {
-    // Nếu hệ thống đang bị khóa, chuyển tiếp frame tới tab đang hoạt động để hiển thị camera trực tiếp
-    if (isSystemLocked) {
+    // Chuyển tiếp frame tới tab đang hoạt động để hiển thị camera trực tiếp khi bị khóa hoặc đang xác nhận mở khóa
+    if (isSystemLocked || message.isLocked || message.unlockGrace) {
       chrome.tabs.query({ active: true }, (tabs) => {
         if (tabs) {
           for (const tab of tabs) {

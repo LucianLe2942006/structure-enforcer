@@ -94,9 +94,11 @@ const cameraAlertDesc = document.getElementById('cameraAlertDesc');
 const btnGrantPermission = document.getElementById('btnGrantPermission');
 
 // Camera Preview Elements
+const previewContainer = document.getElementById('previewContainer');
 const previewImg = document.getElementById('previewImg');
 const previewPosturePill = document.getElementById('previewPosturePill');
 const previewPlaceholder = document.getElementById('previewPlaceholder');
+const previewSlouchBanner = document.getElementById('previewSlouchBanner');
 const btnTogglePreview = document.getElementById('btnTogglePreview');
 const btnTogglePreviewText = document.getElementById('btnTogglePreviewText');
 const previewBtnIcon = document.getElementById('previewBtnIcon');
@@ -254,10 +256,29 @@ function updateUIState(running, cameraStatus = "OFF", cameraError = null) {
   hideCameraAlert();
 }
 
-// Lắng nghe cập nhật trạng thái Camera và Frame xem trước từ offscreen
+function setSlouchAlertInPreview(isSlouching) {
+  if (!previewContainer) return;
+  if (isSlouching) {
+    previewContainer.classList.add('slouching');
+    if (previewSlouchBanner) previewSlouchBanner.classList.remove('hidden');
+  } else {
+    previewContainer.classList.remove('slouching');
+    if (previewSlouchBanner) previewSlouchBanner.classList.add('hidden');
+  }
+}
+
+// Lắng nghe cập nhật trạng thái Camera, lệnh Khóa và Frame xem trước từ offscreen
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.action === "CAMERA_STATUS_UPDATE") {
     refreshStatus();
+  } else if (msg.action === "TRIGGER_LOCK") {
+    // Khi phát hiện gù lưng: Tự động kích hoạt xem trước và hiển thị cảnh báo nếu đang ở trang Settings
+    if (!isPreviewActive) {
+      startPreview();
+    }
+    setSlouchAlertInPreview(true);
+  } else if (msg.action === "TRIGGER_UNLOCK") {
+    setSlouchAlertInPreview(false);
   } else if (msg.action === "PREVIEW_FRAME" && msg.dataUrl && isPreviewActive) {
     if (previewImg) {
       previewImg.src = msg.dataUrl;
@@ -267,9 +288,11 @@ chrome.runtime.onMessage.addListener((msg) => {
       if (msg.isLocked) {
         previewPosturePill.className = "preview-posture-pill pill-bad";
         previewPosturePill.innerText = "⚠️ SAI TƯ THẾ (GÙ LƯNG)";
+        setSlouchAlertInPreview(true);
       } else {
         previewPosturePill.className = "preview-posture-pill pill-good";
         previewPosturePill.innerText = "🟢 TƯ THẾ CHUẨN";
+        setSlouchAlertInPreview(false);
       }
     }
   }
@@ -330,6 +353,7 @@ function stopPreview() {
   if (previewPosturePill) {
     previewPosturePill.classList.add('hidden');
   }
+  setSlouchAlertInPreview(false);
   if (previewPlaceholder) {
     previewPlaceholder.classList.remove('hidden');
   }
