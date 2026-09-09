@@ -1,7 +1,11 @@
 const videoElement = document.getElementById('webcam');
+const previewCanvas = document.getElementById('previewCanvas') || document.createElement('canvas');
+const previewCtx = previewCanvas.getContext('2d');
 
 let isLocked = false;
 let slouchCounter = 0;
+let isPreviewStreaming = false;
+let lastPoseResults = null;
 
 // 1. Cấu hình MediaPipe Pose (đọc file offline trong cùng thư mục)
 const pose = new Pose({
@@ -39,6 +43,8 @@ let isFirstResult = true;
 
 // 2. Phân tích tư thế và gửi tín hiệu
 pose.onResults((results) => {
+  lastPoseResults = results;
+
   if (isFirstResult) {
     isFirstResult = false;
     console.log("🚀 MediaPipe Pose AI đã sẵn sàng và đang nhận diện chuyển động cơ thể!");
@@ -61,7 +67,7 @@ pose.onResults((results) => {
     if (slouchCounter >= 10 && !isLocked) {
       isLocked = true;
       console.log(">>> 🚨 ĐÃ GỬI LỆNH KHÓA MÀN HÌNH TỚI CÁC TRANG WEB! <<<");
-      chrome.runtime.sendMessage({ action: "TRIGGER_LOCK" });
+      chrome.runtime.sendMessage({ action: "TRIGGER_LOCK" }).catch(() => {});
     }
   } else {
     // Ngồi thẳng dậy -> Mở khóa
@@ -69,7 +75,7 @@ pose.onResults((results) => {
       isLocked = false;
       slouchCounter = 0;
       console.log(">>> ✅ NGỒI THẲNG TRỞ LẠI -> ĐÃ GỬI LỆNH MỞ KHÓA! <<<");
-      chrome.runtime.sendMessage({ action: "TRIGGER_UNLOCK" });
+      chrome.runtime.sendMessage({ action: "TRIGGER_UNLOCK" }).catch(() => {});
     } else {
       slouchCounter = 0;
       console.log(`🟢 [TƯ THẾ CHUẨN] Khoảng cách: ${postureDistance.toFixed(2)} >= ${SLOUCH_THRESHOLD}`);
@@ -165,6 +171,49 @@ async function startWebcamLoop() {
           isProcessing = false;
         }
       }
+
+      // Nếu trang Settings đang bật xem trước camera: Vẽ frame và gửi cho Settings
+      if (isPreviewStreaming && isVideoReady) {
+        try {
+          previewCanvas.width = 480;
+          previewCanvas.height = 360;
+          previewCtx.drawImage(videoElement, 0, 0, 480, 360);
+
+          // Vẽ khung xương nhận diện tư thế trực quan
+          if (lastPoseResults && lastPoseResults.poseLandmarks) {
+            const nose = lastPoseResults.poseLandmarks[0];
+            const leftShoulder = lastPoseResults.poseLandmarks[11];
+            const rightShoulder = lastPoseResults.poseLandmarks[12];
+
+            // Đường nối hai vai
+            previewCtx.strokeStyle = isLocked ? "#ff4757" : "#2ed573";
+            previewCtx.lineWidth = 4;
+            previewCtx.beginPath();
+            previewCtx.moveTo(leftShoulder.x * 480, leftShoulder.y * 360);
+            previewCtx.lineTo(rightShoulder.x * 480, rightShoulder.y * 360);
+            previewCtx.stroke();
+
+            // Điểm mũi
+            previewCtx.fillStyle = isLocked ? "#ff4757" : "#2ed573";
+            previewCtx.beginPath();
+            previewCtx.arc(nose.x * 480, nose.y * 360, 6, 0, 2 * Math.PI);
+            previewCtx.fill();
+
+            // Nhãn hiển thị trạng thái AI
+            previewCtx.font = "bold 15px system-ui, sans-serif";
+            previewCtx.fillStyle = isLocked ? "#ff4757" : "#2ed573";
+            previewCtx.fillText(isLocked ? "⚠️ SAI TƯ THẾ (GÙ LƯNG)" : "🟢 TƯ THẾ CHUẨN", 16, 32);
+          }
+
+          const frameData = previewCanvas.toDataURL('image/jpeg', 0.55);
+          chrome.runtime.sendMessage({
+            action: "PREVIEW_FRAME",
+            dataUrl: frameData
+          }).catch(() => { });
+        } catch (canvasErr) {
+          console.warn("Lỗi render preview frame:", canvasErr);
+        }
+      }
     }, 100); // 10 FPS (100ms/lần) - mượt mà, tối ưu CPU/RAM
   } catch (err) {
     console.error("❌ Không thể mở webcam trong offscreen:", err);
@@ -185,7 +234,10 @@ function stopWebcamLoop() {
     loopIntervalId = null;
   }
   if (mediaStream) {
-    mediaStream.getTracks().forEach((track) => track.stop());
+    mediaStream.getTracks().forEach((track) => {
+      track.onended = null; // Ngăn chặn kích hoạt listener lỗi khi chủ động tắt
+      track.stop();
+    });
     mediaStream = null;
   }
   if (videoElement) {
@@ -203,6 +255,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   } else if (msg.action === "STOP_CAMERA") {
     console.log("Nhận tín hiệu STOP_CAMERA...");
     stopWebcamLoop();
+    if (sendResponse) sendResponse({ ok: true });
+  } else if (msg.action === "START_PREVIEW_STREAM") {
+    console.log("Nhận tín hiệu START_PREVIEW_STREAM...");
+    isPreviewStreaming = true;
+    if (sendResponse) sendResponse({ ok: true });
+  } else if (msg.action === "STOP_PREVIEW_STREAM") {
+    console.log("Nhận tín hiệu STOP_PREVIEW_STREAM...");
+    isPreviewStreaming = false;
     if (sendResponse) sendResponse({ ok: true });
   }
 });

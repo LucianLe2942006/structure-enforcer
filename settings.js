@@ -94,7 +94,7 @@ const cameraAlertDesc = document.getElementById('cameraAlertDesc');
 const btnGrantPermission = document.getElementById('btnGrantPermission');
 
 // Camera Preview Elements
-const previewVideo = document.getElementById('previewVideo');
+const previewImg = document.getElementById('previewImg');
 const previewPlaceholder = document.getElementById('previewPlaceholder');
 const btnTogglePreview = document.getElementById('btnTogglePreview');
 const btnTogglePreviewText = document.getElementById('btnTogglePreviewText');
@@ -253,10 +253,14 @@ function updateUIState(running, cameraStatus = "OFF", cameraError = null) {
   hideCameraAlert();
 }
 
-// Lắng nghe cập nhật trạng thái Camera từ offscreen/background
+// Lắng nghe cập nhật trạng thái Camera và Frame xem trước từ offscreen
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.action === "CAMERA_STATUS_UPDATE") {
     refreshStatus();
+  } else if (msg.action === "PREVIEW_FRAME" && msg.dataUrl && isPreviewActive) {
+    if (previewImg) {
+      previewImg.src = msg.dataUrl;
+    }
   }
 });
 
@@ -280,58 +284,37 @@ btnMainToggle.addEventListener('click', async () => {
   }
 });
 
-// 3. Tính năng Xem trước Camera trực tiếp (Live Preview)
-let previewStream = null;
+// 3. Tính năng Xem trước Camera trực tiếp (Nhận stream từ AI Worker ngầm)
+let isPreviewActive = false;
 
-async function togglePreview() {
-  if (previewStream) {
+function togglePreview() {
+  if (isPreviewActive) {
     stopPreview();
   } else {
-    await startPreview();
+    startPreview();
   }
 }
 
-async function startPreview() {
-  try {
-    btnTogglePreviewText.innerText = "Đang mở camera...";
+function startPreview() {
+  isPreviewActive = true;
+  chrome.runtime.sendMessage({ action: "START_PREVIEW_STREAM" }).catch(() => { });
 
-    // Tạm dừng webcam ở offscreen worker để nhường phần cứng cho preview trên Windows
-    await chrome.runtime.sendMessage({ action: "PAUSE_OFFSCREEN_FOR_PREVIEW" }).catch(() => {});
-    await new Promise((r) => setTimeout(r, 200));
-
-    previewStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        facingMode: "user"
-      }
-    });
-
-    previewVideo.srcObject = previewStream;
-    await previewVideo.play();
-
-    previewPlaceholder.classList.add('hidden');
-    previewVideo.classList.remove('hidden');
-    previewStatusBadge.classList.remove('hidden');
-    previewBtnIcon.innerText = "🛑";
-    btnTogglePreviewText.innerText = "Dừng xem trước";
-    btnTogglePreview.style.borderColor = "rgba(248, 81, 73, 0.5)";
-    btnTogglePreview.style.color = "#ff7b72";
-  } catch (err) {
-    console.error("Lỗi khi mở luồng xem trước:", err);
-    alert("Không thể bật xem trước: " + (err.name ? `${err.name}: ${err.message}` : err));
-    stopPreview();
-  }
+  previewPlaceholder.classList.add('hidden');
+  if (previewImg) previewImg.classList.remove('hidden');
+  previewStatusBadge.classList.remove('hidden');
+  previewBtnIcon.innerText = "🛑";
+  btnTogglePreviewText.innerText = "Dừng xem trước";
+  btnTogglePreview.style.borderColor = "rgba(248, 81, 73, 0.5)";
+  btnTogglePreview.style.color = "#ff7b72";
 }
 
-async function stopPreview() {
-  if (previewStream) {
-    previewStream.getTracks().forEach((track) => track.stop());
-    previewStream = null;
-  }
-  if (previewVideo) {
-    previewVideo.srcObject = null;
-    previewVideo.classList.add('hidden');
+function stopPreview() {
+  isPreviewActive = false;
+  chrome.runtime.sendMessage({ action: "STOP_PREVIEW_STREAM" }).catch(() => { });
+
+  if (previewImg) {
+    previewImg.src = "";
+    previewImg.classList.add('hidden');
   }
   if (previewPlaceholder) {
     previewPlaceholder.classList.remove('hidden');
@@ -343,25 +326,18 @@ async function stopPreview() {
   btnTogglePreviewText.innerText = "Bật xem trước camera";
   btnTogglePreview.style.borderColor = "";
   btnTogglePreview.style.color = "";
-
-  // Nếu hệ thống đang bật giám sát, phục hồi lại camera ngầm ngay lập tức
-  if (isAppRunning) {
-    setTimeout(() => {
-      chrome.runtime.sendMessage({ action: "RESUME_OFFSCREEN_AFTER_PREVIEW" }).catch(() => {});
-    }, 200);
-  }
 }
 
 btnTogglePreview.addEventListener('click', togglePreview);
 
 // Dừng luồng preview nếu người dùng đóng hoặc reload tab settings
 window.addEventListener('beforeunload', () => {
-  stopPreview();
+  if (isPreviewActive) stopPreview();
 });
 
-// Tự động tạm dừng preview khi người dùng chuyển sang tab khác để nhường camera cho AI ngầm
+// Tự động tạm dừng gửi frame xem trước khi người dùng chuyển sang tab khác
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden' && previewStream) {
+  if (document.visibilityState === 'hidden' && isPreviewActive) {
     stopPreview();
   }
 });

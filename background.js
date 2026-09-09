@@ -173,12 +173,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       action: "UPDATE_OFFSCREEN_THRESHOLD",
       threshold: message.threshold
     }).catch(() => { });
-  } else if (message.action === "PAUSE_OFFSCREEN_FOR_PREVIEW") {
-    chrome.runtime.sendMessage({ action: "STOP_CAMERA" }).catch(() => { });
-    sendResponse({ ok: true });
-  } else if (message.action === "RESUME_OFFSCREEN_AFTER_PREVIEW") {
-    chrome.runtime.sendMessage({ action: "RESTART_CAMERA" }).catch(() => { });
-    sendResponse({ ok: true });
   }
 });
 
