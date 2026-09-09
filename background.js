@@ -1,3 +1,6 @@
+let cameraStatus = "OFF"; // "ACTIVE" | "ERROR" | "OFF"
+let cameraErrorMsg = null;
+
 async function hasOffscreenDocument() {
   const offscreenUrl = chrome.runtime.getURL('offscreen.html');
   const existingContexts = await chrome.runtime.getContexts({
@@ -8,19 +11,34 @@ async function hasOffscreenDocument() {
 }
 
 async function startPostureTracking() {
-  if (await hasOffscreenDocument()) return;
+  try {
+    cameraStatus = "CONNECTING";
+    chrome.action.setBadgeText({ text: "..." });
+    chrome.action.setBadgeBackgroundColor({ color: "#e67e22" });
+    chrome.action.setTitle({ title: "Posture Enforcer: Đang kết nối camera..." });
 
-  await chrome.offscreen.createDocument({
-    url: 'offscreen.html',
-    reasons: ['USER_MEDIA'],
-    justification: 'MediaPipe tracking'
-  });
+    const exists = await hasOffscreenDocument();
+    if (!exists) {
+      await chrome.offscreen.createDocument({
+        url: 'offscreen.html',
+        reasons: ['USER_MEDIA'],
+        justification: 'MediaPipe tracking'
+      });
+    } else {
+      // Nếu offscreen đã có sẵn, gửi lệnh đảm bảo camera đang chạy
+      chrome.runtime.sendMessage({ action: "RESTART_CAMERA" }).catch(() => { });
+    }
 
-  // Cập nhật Badge trên toolbar: ON (Màu xanh lá)
-  chrome.action.setBadgeText({ text: "ON" });
-  chrome.action.setBadgeBackgroundColor({ color: "#2ed573" });
-  chrome.action.setTitle({ title: "Posture Enforcer: Đang BẬT (Bấm để tắt camera)" });
-  console.log("🟢 Posture Tracking: ĐÃ BẬT");
+    console.log("🟡 Posture Tracking: Đang yêu cầu kết nối camera...");
+    ensureContentScriptsInjected();
+  } catch (err) {
+    console.error("Lỗi khi tạo offscreen document:", err);
+    cameraStatus = "ERROR";
+    cameraErrorMsg = err.message || "Lỗi tạo tài liệu chạy ngầm";
+    chrome.action.setBadgeText({ text: "ERR" });
+    chrome.action.setBadgeBackgroundColor({ color: "#eb4d4b" });
+    chrome.action.setTitle({ title: `Posture Enforcer: ${cameraErrorMsg}` });
+  }
 }
 
 async function stopPostureTracking() {
@@ -32,6 +50,9 @@ async function stopPostureTracking() {
     console.warn("Lỗi đóng offscreen document:", err);
   }
 
+  cameraStatus = "OFF";
+  cameraErrorMsg = null;
+
   // Tự động gỡ bỏ khóa màn hình nếu đang bị khóa
   isSystemLocked = false;
   broadcastLockState(false);
@@ -41,6 +62,20 @@ async function stopPostureTracking() {
   chrome.action.setBadgeBackgroundColor({ color: "#747d8c" });
   chrome.action.setTitle({ title: "Posture Enforcer: Đã TẮT (Bấm để bật camera)" });
   console.log("🔴 Posture Tracking: ĐÃ TẮT");
+}
+
+// Tự động tiêm content script vào tất cả các tab web đang mở để không cần F5 thủ công
+function ensureContentScriptsInjected() {
+  chrome.tabs.query({ url: ["http://*/*", "https://*/*"] }, (tabs) => {
+    for (const tab of tabs) {
+      if (tab.id) {
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content.js']
+        }).catch(() => { });
+      }
+    }
+  });
 }
 
 // Bấm vào Icon trên Toolbar: Mở trang Cài đặt & Thử thách Kỷ luật
@@ -54,13 +89,15 @@ chrome.action.onClicked.addListener(async () => {
   }
 });
 
-// Khi vừa cài đặt hoặc nạp lại tiện ích: Mặc định bật và đặt badge ON
+// Khi vừa cài đặt hoặc nạp lại tiện ích: Mặc định bật, đặt badge ON và inject content scripts
 chrome.runtime.onInstalled.addListener(async () => {
   await startPostureTracking();
+  ensureContentScriptsInjected();
 });
 
 // Khi mở trình duyệt: Đồng bộ lại trạng thái hiển thị
 chrome.runtime.onStartup.addListener(async () => {
+  ensureContentScriptsInjected();
   const isRunning = await hasOffscreenDocument();
   if (isRunning) {
     chrome.action.setBadgeText({ text: "ON" });
@@ -92,6 +129,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.action === "TRIGGER_UNLOCK") {
     isSystemLocked = false;
     broadcastLockState(false);
+  } else if (message.action === "CAMERA_STATUS_UPDATE") {
+    cameraStatus = message.status;
+    cameraErrorMsg = message.error;
+    if (cameraStatus === "ACTIVE") {
+      chrome.action.setBadgeText({ text: "ON" });
+      chrome.action.setBadgeBackgroundColor({ color: "#2ed573" });
+      chrome.action.setTitle({ title: "Posture Enforcer: Đang BẬT (Bảo vệ cột sống)" });
+    } else if (cameraStatus === "ERROR") {
+      chrome.action.setBadgeText({ text: "ERR" });
+      chrome.action.setBadgeBackgroundColor({ color: "#eb4d4b" });
+      chrome.action.setTitle({ title: `Posture Enforcer Lỗi Camera: ${cameraErrorMsg}` });
+    }
   } else if (message.action === "GET_LOCK_STATE") {
     sendResponse({ isLocked: isSystemLocked });
   } else if (message.action === "GET_STATUS") {
@@ -100,9 +149,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({
           isRunning,
           isLocked: isSystemLocked,
-          threshold: stored.slouchThreshold || 0.22
+          cameraStatus: isRunning ? cameraStatus : "OFF",
+          cameraError: cameraErrorMsg,
+          threshold: stored ? stored.slouchThreshold || 0.22 : 0.22
         });
       });
+    });
+    return true; // async response
+  } else if (message.action === "GET_INITIAL_THRESHOLD") {
+    chrome.storage.local.get(['slouchThreshold'], (stored) => {
+      sendResponse({ threshold: stored ? stored.slouchThreshold || 0.22 : 0.22 });
     });
     return true; // async response
   } else if (message.action === "START_TRACKING") {
@@ -117,6 +173,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       action: "UPDATE_OFFSCREEN_THRESHOLD",
       threshold: message.threshold
     }).catch(() => { });
+  } else if (message.action === "PAUSE_OFFSCREEN_FOR_PREVIEW") {
+    chrome.runtime.sendMessage({ action: "STOP_CAMERA" }).catch(() => { });
+    sendResponse({ ok: true });
+  } else if (message.action === "RESUME_OFFSCREEN_AFTER_PREVIEW") {
+    chrome.runtime.sendMessage({ action: "RESTART_CAMERA" }).catch(() => { });
+    sendResponse({ ok: true });
   }
 });
 

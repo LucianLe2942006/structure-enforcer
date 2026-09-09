@@ -49,11 +49,50 @@
           </div>
         </div>
 
+        <!-- Camera Error / Permission Notice Box -->
+        <div id="cameraAlertBox" class="camera-alert hidden">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-body">
+            <strong id="cameraAlertTitle">Chưa cấp quyền Camera hoặc Camera bị lỗi</strong>
+            <p id="cameraAlertDesc">Trình duyệt chưa cho phép tiện ích truy cập camera. Bấm nút bên dưới để cấp quyền ngay.</p>
+            <button id="btnGrantPermission" class="btn btn-warning-sm">
+              <span>🎥</span>
+              <span>Cấp quyền & Kích hoạt Camera ngay</span>
+            </button>
+          </div>
+        </div>
+
         <div class="action-section">
           <button id="btnMainToggle" class="btn btn-danger">
             <span class="btn-icon">🛑</span>
             <span id="btnMainToggleText">Yêu cầu tắt bảo vệ</span>
           </button>
+        </div>
+      </section>
+
+      <!-- Live Camera Preview & Posture Check Card -->
+      <section class="card preview-card">
+        <div class="card-header">
+          <div class="card-title-icon">📹</div>
+          <h2>Kiểm tra & Xem trước Camera</h2>
+        </div>
+        <p class="card-desc">Bật xem trước để kiểm tra góc camera, đảm bảo phần cứng hoạt động và khung hình nhìn rõ từ mũi đến hai vai của bạn.</p>
+        
+        <div class="preview-container" id="previewContainer">
+          <div class="preview-placeholder" id="previewPlaceholder">
+            <span class="preview-placeholder-icon">📷</span>
+            <p class="preview-placeholder-title">Khung xem trước đang tắt</p>
+            <span class="preview-placeholder-sub">Bấm nút bên dưới để bật luồng video và kiểm tra webcam</span>
+          </div>
+          <video id="previewVideo" class="preview-video hidden" autoplay playsinline muted></video>
+        </div>
+
+        <div class="preview-controls">
+          <button id="btnTogglePreview" class="btn btn-secondary">
+            <span class="btn-icon" id="previewBtnIcon">👁️</span>
+            <span id="btnTogglePreviewText">Bật xem trước camera</span>
+          </button>
+          <span id="previewStatusBadge" class="preview-badge hidden">🔴 ĐANG XEM TRỰC TIẾP</span>
         </div>
       </section>
 

@@ -87,6 +87,20 @@ const statusDesc = document.getElementById('statusDesc');
 const btnMainToggle = document.getElementById('btnMainToggle');
 const btnMainToggleText = document.getElementById('btnMainToggleText');
 
+// Camera Alert Elements
+const cameraAlertBox = document.getElementById('cameraAlertBox');
+const cameraAlertTitle = document.getElementById('cameraAlertTitle');
+const cameraAlertDesc = document.getElementById('cameraAlertDesc');
+const btnGrantPermission = document.getElementById('btnGrantPermission');
+
+// Camera Preview Elements
+const previewVideo = document.getElementById('previewVideo');
+const previewPlaceholder = document.getElementById('previewPlaceholder');
+const btnTogglePreview = document.getElementById('btnTogglePreview');
+const btnTogglePreviewText = document.getElementById('btnTogglePreviewText');
+const previewBtnIcon = document.getElementById('previewBtnIcon');
+const previewStatusBadge = document.getElementById('previewStatusBadge');
+
 const thresholdSlider = document.getElementById('thresholdSlider');
 const thresholdValue = document.getElementById('thresholdValue');
 
@@ -103,11 +117,77 @@ const btnCancelStop = document.getElementById('btnCancelStop');
 const btnNextRoast = document.getElementById('btnNextRoast');
 const btnNextRoastText = document.getElementById('btnNextRoastText');
 
+function showCameraAlert(title, desc, isError = false) {
+  if (cameraAlertTitle) cameraAlertTitle.innerText = title;
+  if (cameraAlertDesc) cameraAlertDesc.innerText = desc;
+  if (cameraAlertBox) {
+    if (isError) {
+      cameraAlertBox.classList.add('alert-error');
+    } else {
+      cameraAlertBox.classList.remove('alert-error');
+    }
+    cameraAlertBox.classList.remove('hidden');
+  }
+}
+
+function hideCameraAlert() {
+  if (cameraAlertBox) cameraAlertBox.classList.add('hidden');
+}
+
+// Hàm kích hoạt xin quyền Camera trực tiếp từ Chrome tab
+async function ensureCameraPermission() {
+  try {
+    // Kiểm tra nhanh xem trình duyệt đã cấp quyền trước đó chưa
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const perm = await navigator.permissions.query({ name: 'camera' });
+        if (perm.state === 'granted') {
+          hideCameraAlert();
+          return true;
+        }
+      } catch (permErr) {
+        // Permissions query có thể không hỗ trợ, tiếp tục gọi getUserMedia
+      }
+    }
+
+    // Nếu chưa có quyền, gọi getUserMedia trên tab giao diện để trình duyệt bung popup xin quyền
+    const testStream = await navigator.mediaDevices.getUserMedia({
+      video: true
+    });
+    // Ngay lập tức đóng stream tạm này để nhường webcam cho worker ngầm
+    testStream.getTracks().forEach((t) => t.stop());
+    hideCameraAlert();
+    return true;
+  } catch (err) {
+    console.error("Lỗi khi yêu cầu quyền Camera:", err);
+    showCameraAlert(
+      "Chưa thể truy cập Camera",
+      `Chi tiết: ${err.name} - ${err.message}. Nếu Chrome đã chặn, vui lòng bấm vào biểu tượng Camera/Ổ khóa ở thanh địa chỉ để cấp quyền "Cho phép" và thử lại.`,
+      true
+    );
+    return false;
+  }
+}
+
+// Bấm nút Cấp quyền trong khung cảnh báo
+if (btnGrantPermission) {
+  btnGrantPermission.addEventListener('click', async () => {
+    btnGrantPermission.innerText = "Đang xin quyền...";
+    const ok = await ensureCameraPermission();
+    btnGrantPermission.innerHTML = "<span>🎥</span> <span>Cấp quyền & Kích hoạt Camera ngay</span>";
+    if (ok) {
+      chrome.runtime.sendMessage({ action: "START_TRACKING" }, () => {
+        setTimeout(refreshStatus, 400);
+      });
+    }
+  });
+}
+
 // 1. Kiểm tra trạng thái hiện tại từ background.js
 async function refreshStatus() {
   chrome.runtime.sendMessage({ action: "GET_STATUS" }, (response) => {
     if (chrome.runtime.lastError || !response) return;
-    updateUIState(response.isRunning);
+    updateUIState(response.isRunning, response.cameraStatus, response.cameraError);
     if (response.threshold) {
       thresholdSlider.value = response.threshold;
       thresholdValue.innerText = Number(response.threshold).toFixed(2);
@@ -115,18 +195,9 @@ async function refreshStatus() {
   });
 }
 
-function updateUIState(running) {
+function updateUIState(running, cameraStatus = "OFF", cameraError = null) {
   isAppRunning = running;
-  if (running) {
-    badgeIndicator.className = "badge badge-active";
-    badgeText.innerText = "ĐANG GIÁM SÁT";
-    statusVisual.className = "status-visual";
-    statusIcon.innerText = "👁️";
-    statusHeading.innerText = "AI Camera đang hoạt động";
-    statusDesc.innerText = "Mô hình MediaPipe Pose đang quét liên tục ngầm để bảo vệ cột sống của bạn.";
-    btnMainToggle.className = "btn btn-danger";
-    btnMainToggleText.innerText = "Yêu cầu tắt bảo vệ (Thách thức)";
-  } else {
+  if (!running || cameraStatus === "OFF") {
     badgeIndicator.className = "badge badge-inactive";
     badgeText.innerText = "ĐÃ TẮT";
     statusVisual.className = "status-visual off";
@@ -135,19 +206,163 @@ function updateUIState(running) {
     statusDesc.innerText = "Webcam đã được giải phóng hoàn toàn. Bấm nút dưới để bật lại chế độ bảo vệ.";
     btnMainToggle.className = "btn btn-success";
     btnMainToggleText.innerText = "Bật bảo vệ tư thế (1-Click)";
+    hideCameraAlert();
+    return;
   }
+
+  if (cameraStatus === "CONNECTING") {
+    badgeIndicator.className = "badge badge-warning";
+    badgeText.innerText = "ĐANG KẾT NỐI...";
+    statusVisual.className = "status-visual";
+    statusIcon.innerText = "⏳";
+    statusHeading.innerText = "Đang kết nối Camera AI";
+    statusDesc.innerText = "Đang khởi động phần cứng webcam và nạp mô hình MediaPipe...";
+    btnMainToggle.className = "btn btn-danger";
+    btnMainToggleText.innerText = "Tắt giám sát";
+    hideCameraAlert();
+    return;
+  }
+
+  // Lỗi kết nối Camera
+  if (cameraStatus === "ERROR") {
+    badgeIndicator.className = "badge badge-error";
+    badgeText.innerText = "LỖI CAMERA";
+    statusVisual.className = "status-visual off";
+    statusIcon.innerText = "⚠️";
+    statusHeading.innerText = "Chưa thể kết nối Camera";
+    statusDesc.innerText = cameraError || "Không thể khởi động phần cứng webcam. Vui lòng cấp quyền Camera.";
+    btnMainToggle.className = "btn btn-danger";
+    btnMainToggleText.innerText = "Tắt giám sát";
+    showCameraAlert(
+      "Cần cấp quyền truy cập Camera",
+      cameraError || "Webcam bị ứng dụng khác chiếm giữ hoặc chưa được cấp quyền.",
+      true
+    );
+    return;
+  }
+
+  // ACTIVE - Đèn webcam đang sáng & AI đang quét
+  badgeIndicator.className = "badge badge-active";
+  badgeText.innerText = "ĐANG GIÁM SÁT";
+  statusVisual.className = "status-visual";
+  statusIcon.innerText = "👁️";
+  statusHeading.innerText = "AI Camera đang hoạt động";
+  statusDesc.innerText = "Mô hình MediaPipe Pose đang quét liên tục ngầm (đèn webcam đang sáng) để bảo vệ cột sống.";
+  btnMainToggle.className = "btn btn-danger";
+  btnMainToggleText.innerText = "Yêu cầu tắt bảo vệ (Thách thức)";
+  hideCameraAlert();
 }
 
+// Lắng nghe cập nhật trạng thái Camera từ offscreen/background
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.action === "CAMERA_STATUS_UPDATE") {
+    refreshStatus();
+  }
+});
+
 // 2. Nút Bật / Tắt chính trên Dashboard
-btnMainToggle.addEventListener('click', () => {
+btnMainToggle.addEventListener('click', async () => {
   if (isAppRunning) {
     // Muốn TẮT: Kích hoạt màn hình thử thách 12 bước!
     startChallenge();
   } else {
-    // Muốn BẬT: 1 click là bật ngay lập tức
+    // Muốn BẬT: Đảm bảo có quyền Camera trước
+    btnMainToggleText.innerText = "Đang kết nối camera...";
+    const hasPermission = await ensureCameraPermission();
+    if (!hasPermission) {
+      btnMainToggleText.innerText = "Bật bảo vệ tư thế (1-Click)";
+      return;
+    }
+
     chrome.runtime.sendMessage({ action: "START_TRACKING" }, () => {
-      updateUIState(true);
+      setTimeout(refreshStatus, 400);
     });
+  }
+});
+
+// 3. Tính năng Xem trước Camera trực tiếp (Live Preview)
+let previewStream = null;
+
+async function togglePreview() {
+  if (previewStream) {
+    stopPreview();
+  } else {
+    await startPreview();
+  }
+}
+
+async function startPreview() {
+  try {
+    btnTogglePreviewText.innerText = "Đang mở camera...";
+
+    // Tạm dừng webcam ở offscreen worker để nhường phần cứng cho preview trên Windows
+    await chrome.runtime.sendMessage({ action: "PAUSE_OFFSCREEN_FOR_PREVIEW" }).catch(() => {});
+    await new Promise((r) => setTimeout(r, 200));
+
+    previewStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+        facingMode: "user"
+      }
+    });
+
+    previewVideo.srcObject = previewStream;
+    await previewVideo.play();
+
+    previewPlaceholder.classList.add('hidden');
+    previewVideo.classList.remove('hidden');
+    previewStatusBadge.classList.remove('hidden');
+    previewBtnIcon.innerText = "🛑";
+    btnTogglePreviewText.innerText = "Dừng xem trước";
+    btnTogglePreview.style.borderColor = "rgba(248, 81, 73, 0.5)";
+    btnTogglePreview.style.color = "#ff7b72";
+  } catch (err) {
+    console.error("Lỗi khi mở luồng xem trước:", err);
+    alert("Không thể bật xem trước: " + (err.name ? `${err.name}: ${err.message}` : err));
+    stopPreview();
+  }
+}
+
+async function stopPreview() {
+  if (previewStream) {
+    previewStream.getTracks().forEach((track) => track.stop());
+    previewStream = null;
+  }
+  if (previewVideo) {
+    previewVideo.srcObject = null;
+    previewVideo.classList.add('hidden');
+  }
+  if (previewPlaceholder) {
+    previewPlaceholder.classList.remove('hidden');
+  }
+  if (previewStatusBadge) {
+    previewStatusBadge.classList.add('hidden');
+  }
+  previewBtnIcon.innerText = "👁️";
+  btnTogglePreviewText.innerText = "Bật xem trước camera";
+  btnTogglePreview.style.borderColor = "";
+  btnTogglePreview.style.color = "";
+
+  // Nếu hệ thống đang bật giám sát, phục hồi lại camera ngầm ngay lập tức
+  if (isAppRunning) {
+    setTimeout(() => {
+      chrome.runtime.sendMessage({ action: "RESUME_OFFSCREEN_AFTER_PREVIEW" }).catch(() => {});
+    }, 200);
+  }
+}
+
+btnTogglePreview.addEventListener('click', togglePreview);
+
+// Dừng luồng preview nếu người dùng đóng hoặc reload tab settings
+window.addEventListener('beforeunload', () => {
+  stopPreview();
+});
+
+// Tự động tạm dừng preview khi người dùng chuyển sang tab khác để nhường camera cho AI ngầm
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && previewStream) {
+    stopPreview();
   }
 });
 

@@ -1,4 +1,7 @@
 (() => {
+    if (window.__POSTURE_ENFORCER_INJECTED__) return;
+    window.__POSTURE_ENFORCER_INJECTED__ = true;
+
     const OVERLAY_ID = "spine-guard-eos-blocker";
     console.log("🛡️ Posture Enforcer content script đã nạp thành công trên trang này!");
 

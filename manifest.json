@@ -6,7 +6,8 @@
   "permissions": [
     "offscreen",
     "tabs",
-    "storage"
+    "storage",
+    "scripting"
   ],
   "options_ui": {
     "page": "settings.html",
