@@ -177,9 +177,15 @@ async function startWebcamLoop() {
         try {
           previewCanvas.width = 480;
           previewCanvas.height = 360;
+
+          // 1. Áp dụng hiệu ứng lật gương cho video và khung xương AI
+          previewCtx.save();
+          previewCtx.translate(480, 0);
+          previewCtx.scale(-1, 1);
+
           previewCtx.drawImage(videoElement, 0, 0, 480, 360);
 
-          // Vẽ khung xương nhận diện tư thế trực quan
+          // Vẽ khung xương nhận diện tư thế trực quan (tự động khớp với hình ảnh lật gương)
           if (lastPoseResults && lastPoseResults.poseLandmarks) {
             const nose = lastPoseResults.poseLandmarks[0];
             const leftShoulder = lastPoseResults.poseLandmarks[11];
@@ -198,12 +204,34 @@ async function startWebcamLoop() {
             previewCtx.beginPath();
             previewCtx.arc(nose.x * 480, nose.y * 360, 6, 0, 2 * Math.PI);
             previewCtx.fill();
-
-            // Nhãn hiển thị trạng thái AI
-            previewCtx.font = "bold 15px system-ui, sans-serif";
-            previewCtx.fillStyle = isLocked ? "#ff4757" : "#2ed573";
-            previewCtx.fillText(isLocked ? "⚠️ SAI TƯ THẾ (GÙ LƯNG)" : "🟢 TƯ THẾ CHUẨN", 16, 32);
           }
+
+          // 2. Khôi phục hệ tọa độ chuẩn (không lật) để vẽ nhãn chữ bình thường, không bị ngược!
+          previewCtx.restore();
+
+          // Vẽ nền pill tối mờ cho chữ dễ đọc
+          previewCtx.fillStyle = "rgba(10, 14, 20, 0.75)";
+          if (previewCtx.roundRect) {
+            previewCtx.beginPath();
+            previewCtx.roundRect(12, 12, isLocked ? 230 : 175, 34, 8);
+            previewCtx.fill();
+          } else {
+            previewCtx.fillRect(12, 12, isLocked ? 230 : 175, 34);
+          }
+
+          // Vẽ viền pill mỏng
+          previewCtx.strokeStyle = isLocked ? "rgba(255, 71, 87, 0.5)" : "rgba(46, 213, 115, 0.5)";
+          previewCtx.lineWidth = 1;
+          if (previewCtx.roundRect) {
+            previewCtx.beginPath();
+            previewCtx.roundRect(12, 12, isLocked ? 230 : 175, 34, 8);
+            previewCtx.stroke();
+          }
+
+          // Nhãn hiển thị trạng thái AI (chữ chuẩn từ trái sang phải)
+          previewCtx.font = "bold 13px system-ui, -apple-system, sans-serif";
+          previewCtx.fillStyle = isLocked ? "#ff4757" : "#2ed573";
+          previewCtx.fillText(isLocked ? "⚠️ SAI TƯ THẾ (GÙ LƯNG)" : "🟢 TƯ THẾ CHUẨN", 20, 34);
 
           const frameData = previewCanvas.toDataURL('image/jpeg', 0.55);
           chrome.runtime.sendMessage({
