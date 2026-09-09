@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cài đặt & Kỷ luật - Posture Enforcer</title>
+  <link rel="stylesheet" href="settings.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="background-glow"></div>
+  
+  <main class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-area">
+        <div class="logo-icon">🛡️</div>
+        <div>
+          <h1 class="brand-title">Posture Enforcer</h1>
+          <p class="brand-subtitle">Hệ thống giám sát tư thế kỷ luật thép (Active Disruption)</p>
+        </div>
+      </div>
+      <div class="header-status">
+        <span id="badgeIndicator" class="badge badge-active">
+          <span class="badge-dot"></span>
+          <span id="badgeText">ĐANG GIÁM SÁT</span>
+        </span>
+      </div>
+    </header>
+
+    <!-- Dashboard Cards Grid -->
+    <div class="dashboard-grid">
+      <!-- Status Card -->
+      <section class="card status-card">
+        <div class="card-header">
+          <div class="card-title-icon">⚡</div>
+          <h2>Trạng thái hệ thống</h2>
+        </div>
+        <div class="status-content">
+          <div class="status-visual" id="statusVisual">
+            <div class="pulse-ring"></div>
+            <div class="status-icon" id="statusIcon">👁️</div>
+          </div>
+          <div class="status-info">
+            <h3 id="statusHeading">AI Camera đang hoạt động</h3>
+            <p id="statusDesc">Mô hình MediaPipe Pose đang quét liên tục ngầm để bảo vệ cột sống của bạn.</p>
+          </div>
+        </div>
+
+        <div class="action-section">
+          <button id="btnMainToggle" class="btn btn-danger">
+            <span class="btn-icon">🛑</span>
+            <span id="btnMainToggleText">Yêu cầu tắt bảo vệ</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Settings / Sensitivity Card -->
+      <section class="card settings-card">
+        <div class="card-header">
+          <div class="card-title-icon">🎚️</div>
+          <h2>Độ nhạy nhận diện gù lưng</h2>
+        </div>
+        <p class="card-desc">Điều chỉnh ngưỡng khoảng cách giữa Mũi và Vai (mặc định 0.22). Hãy tăng nếu bạn ngồi gần camera hoặc giảm nếu ngồi xa.</p>
+        
+        <div class="slider-group">
+          <div class="slider-header">
+            <span>Ngưỡng kích hoạt khóa (Threshold):</span>
+            <span class="slider-value" id="thresholdValue">0.22</span>
+          </div>
+          <input type="range" id="thresholdSlider" min="0.12" max="0.35" step="0.01" value="0.22">
+          <div class="slider-labels">
+            <span>Dễ tính (0.12)</span>
+            <span>Khuyên dùng (0.22)</span>
+            <span>Kỷ luật thép (0.35)</span>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <div class="info-icon">💡</div>
+          <div class="info-text">
+            <strong>Mẹo:</strong> Nếu bạn chỉ hơi khom mà đã bị khóa, hãy hạ ngưỡng xuống <code>0.18</code>. Nếu gục đầu hẳn mà chưa khóa, hãy tăng lên <code>0.26</code>.
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Philosophy & Features Note -->
+    <footer class="footer-card card">
+      <div class="footer-item">
+        <span class="footer-icon">🔒</span>
+        <div>
+          <h4>Riêng tư 100%</h4>
+          <p>Hình ảnh camera chỉ xử lý cục bộ trên RAM bằng WebAssembly, tuyệt đối không gửi ra internet.</p>
+        </div>
+      </div>
+      <div class="footer-item">
+        <span class="footer-icon">⚔️</span>
+        <div>
+          <h4>Cơ chế Kỷ luật thép</h4>
+          <p>Tương tự StayFocusd Nuclear Option: Bạn không thể tắt tiện ích một cách bốc đồng hay dễ dàng!</p>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- 12-STEP ROAST CHALLENGE MODAL (StayFocusd Style) -->
+  <div id="challengeModal" class="modal-overlay hidden">
+    <div class="modal-card" id="modalCard">
+      <div class="modal-progress-container">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill" style="width: 8.33%;"></div>
+        </div>
+        <div class="progress-labels">
+          <span class="progress-step-text" id="stepCounterText">CẢNH BÁO: 1 / 12</span>
+          <span class="progress-percent-text" id="stepPercentText">8%</span>
+        </div>
+      </div>
+
+      <div class="roast-container">
+        <div class="roast-emoji" id="roastEmoji">🦐</div>
+        <h3 class="roast-title" id="roastTitle">ỦA? MỚI ĐÓ MÀ ĐÃ ĐÒI TẮT RỒI À?</h3>
+        <p class="roast-message" id="roastMessage">
+          Cột sống của bạn là dây thun hay gì mà thích uốn éo thế? Ngồi có một chút đã muốn tắt đi để tiếp tục làm con tôm luộc rồi à?
+        </p>
+      </div>
+
+      <div class="modal-actions">
+        <!-- Nút cứu cánh: luôn to, sáng, dễ bấm -->
+        <button id="btnCancelStop" class="btn btn-save-spine">
+          <span class="btn-icon">💚</span>
+          <span>Tôi đổi ý rồi! Tôi sẽ ngồi thẳng lưng!</span>
+        </button>
+
+        <!-- Nút nhây: bắt buộc phải bấm 12 lần mới cho tắt -->
+        <button id="btnNextRoast" class="btn btn-persist-stop">
+          <span id="btnNextRoastText">Tôi vẫn kiên quyết muốn tắt (1/12)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

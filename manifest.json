@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Posture Enforcer MVP",
+  "version": "1.0",
+  "description": "Ngoi sai tu the la khoa man hinh!",
+  "permissions": [
+    "offscreen",
+    "tabs",
+    "storage"
+  ],
+  "options_ui": {
+    "page": "settings.html",
+    "open_in_tab": true
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "action": {
+    "default_title": "Posture Enforcer: Bấm để mở Cài đặt & Kỷ luật"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}
