@@ -6,6 +6,7 @@ let isLocked = false;
 let slouchCounter = 0;
 let isPreviewStreaming = false;
 let lastPoseResults = null;
+let unlockGraceFrames = 0;
 
 // 1. Cấu hình MediaPipe Pose (đọc file offline trong cùng thư mục)
 const pose = new Pose({
@@ -74,6 +75,7 @@ pose.onResults((results) => {
     if (isLocked) {
       isLocked = false;
       slouchCounter = 0;
+      unlockGraceFrames = 5; // Duy trì gửi thêm 5 frames để hiển thị tư thế chuẩn xanh lá trước khi đóng
       console.log(">>> ✅ NGỒI THẲNG TRỞ LẠI -> ĐÃ GỬI LỆNH MỞ KHÓA! <<<");
       chrome.runtime.sendMessage({ action: "TRIGGER_UNLOCK" }).catch(() => {});
     } else {
@@ -172,8 +174,11 @@ async function startWebcamLoop() {
         }
       }
 
-      // Nếu trang Settings đang bật xem trước camera: Vẽ frame và gửi cho Settings
-      if (isPreviewStreaming && isVideoReady) {
+      // Nếu đang bật xem trước ở Settings HOẶC đang bị khóa sai tư thế: Vẽ frame và gửi
+      const shouldStream = isPreviewStreaming || isLocked || unlockGraceFrames > 0;
+      if (unlockGraceFrames > 0) unlockGraceFrames--;
+
+      if (shouldStream && isVideoReady) {
         try {
           previewCanvas.width = 480;
           previewCanvas.height = 360;

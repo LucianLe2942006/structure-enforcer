@@ -173,6 +173,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       action: "UPDATE_OFFSCREEN_THRESHOLD",
       threshold: message.threshold
     }).catch(() => { });
+  } else if (message.action === "PREVIEW_FRAME") {
+    // Nếu hệ thống đang bị khóa, chuyển tiếp frame tới tab đang hoạt động để hiển thị camera trực tiếp
+    if (isSystemLocked) {
+      chrome.tabs.query({ active: true }, (tabs) => {
+        if (tabs) {
+          for (const tab of tabs) {
+            if (tab.id) {
+              chrome.tabs.sendMessage(tab.id, message).catch(() => { });
+            }
+          }
+        }
+      });
+    }
   }
 });
 
