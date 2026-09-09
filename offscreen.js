@@ -206,37 +206,14 @@ async function startWebcamLoop() {
             previewCtx.fill();
           }
 
-          // 2. Khôi phục hệ tọa độ chuẩn (không lật) để vẽ nhãn chữ bình thường, không bị ngược!
+          // Khôi phục hệ tọa độ
           previewCtx.restore();
-
-          // Vẽ nền pill tối mờ cho chữ dễ đọc
-          previewCtx.fillStyle = "rgba(10, 14, 20, 0.75)";
-          if (previewCtx.roundRect) {
-            previewCtx.beginPath();
-            previewCtx.roundRect(12, 12, isLocked ? 230 : 175, 34, 8);
-            previewCtx.fill();
-          } else {
-            previewCtx.fillRect(12, 12, isLocked ? 230 : 175, 34);
-          }
-
-          // Vẽ viền pill mỏng
-          previewCtx.strokeStyle = isLocked ? "rgba(255, 71, 87, 0.5)" : "rgba(46, 213, 115, 0.5)";
-          previewCtx.lineWidth = 1;
-          if (previewCtx.roundRect) {
-            previewCtx.beginPath();
-            previewCtx.roundRect(12, 12, isLocked ? 230 : 175, 34, 8);
-            previewCtx.stroke();
-          }
-
-          // Nhãn hiển thị trạng thái AI (chữ chuẩn từ trái sang phải)
-          previewCtx.font = "bold 13px system-ui, -apple-system, sans-serif";
-          previewCtx.fillStyle = isLocked ? "#ff4757" : "#2ed573";
-          previewCtx.fillText(isLocked ? "⚠️ SAI TƯ THẾ (GÙ LƯNG)" : "🟢 TƯ THẾ CHUẨN", 20, 34);
 
           const frameData = previewCanvas.toDataURL('image/jpeg', 0.55);
           chrome.runtime.sendMessage({
             action: "PREVIEW_FRAME",
-            dataUrl: frameData
+            dataUrl: frameData,
+            isLocked: isLocked
           }).catch(() => { });
         } catch (canvasErr) {
           console.warn("Lỗi render preview frame:", canvasErr);

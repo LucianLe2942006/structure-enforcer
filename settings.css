@@ -551,6 +551,38 @@ input[type=range]::-webkit-slider-thumb:hover {
   border-radius: 14px;
 }
 
+.preview-posture-pill {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  transition: all 0.25s ease;
+  pointer-events: none;
+}
+
+.preview-posture-pill.pill-good {
+  background: rgba(10, 30, 20, 0.85);
+  color: #2ed573;
+  border: 1px solid rgba(46, 213, 115, 0.5);
+  box-shadow: 0 0 15px rgba(46, 213, 115, 0.25);
+}
+
+.preview-posture-pill.pill-bad {
+  background: rgba(40, 10, 15, 0.85);
+  color: #ff4757;
+  border: 1px solid rgba(255, 71, 87, 0.6);
+  box-shadow: 0 0 20px rgba(255, 71, 87, 0.35);
+  animation: shake 0.4s ease;
+}
+
 .preview-controls {
   display: flex;
   align-items: center;

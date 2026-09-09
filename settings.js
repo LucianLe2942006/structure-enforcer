@@ -95,6 +95,7 @@ const btnGrantPermission = document.getElementById('btnGrantPermission');
 
 // Camera Preview Elements
 const previewImg = document.getElementById('previewImg');
+const previewPosturePill = document.getElementById('previewPosturePill');
 const previewPlaceholder = document.getElementById('previewPlaceholder');
 const btnTogglePreview = document.getElementById('btnTogglePreview');
 const btnTogglePreviewText = document.getElementById('btnTogglePreviewText');
@@ -261,6 +262,16 @@ chrome.runtime.onMessage.addListener((msg) => {
     if (previewImg) {
       previewImg.src = msg.dataUrl;
     }
+    if (previewPosturePill) {
+      previewPosturePill.classList.remove('hidden');
+      if (msg.isLocked) {
+        previewPosturePill.className = "preview-posture-pill pill-bad";
+        previewPosturePill.innerText = "⚠️ SAI TƯ THẾ (GÙ LƯNG)";
+      } else {
+        previewPosturePill.className = "preview-posture-pill pill-good";
+        previewPosturePill.innerText = "🟢 TƯ THẾ CHUẨN";
+      }
+    }
   }
 });
 
@@ -315,6 +326,9 @@ function stopPreview() {
   if (previewImg) {
     previewImg.src = "";
     previewImg.classList.add('hidden');
+  }
+  if (previewPosturePill) {
+    previewPosturePill.classList.add('hidden');
   }
   if (previewPlaceholder) {
     previewPlaceholder.classList.remove('hidden');
