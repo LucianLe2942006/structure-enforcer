@@ -6,47 +6,53 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Manifest V3](https://img.shields.io/badge/Chrome%20Extension-Manifest%20V3-success.svg)]()
 [![MediaPipe Pose](https://img.shields.io/badge/AI%20Engine-MediaPipe%20Pose%20(WASM)-orange.svg)]()
+[![Client-side Privacy](https://img.shields.io/badge/Privacy-100%25%20On--Device-brightgreen.svg)]()
 
 ---
 
 ## 📌 1. Tổng quan & Bài toán (Problem & Solution)
 
-* **Vấn đề (Pain Point):** Sinh viên IT và nhân viên văn phòng thường vô thức gù lưng, khom cổ và gục mặt sát màn hình khi tập trung làm việc. Các ứng dụng thông báo thụ động (Passive Ping) trên thị trường thường dễ dàng bị phớt lờ, gạt bỏ hoặc tắt đi trong vòng 1 giây mà không tạo ra thay đổi hành vi thực sự.
-* **Giải pháp (USP - Active Disruption):** Giám sát tư thế trực tiếp qua webcam ngầm bằng trí tuệ nhân tạo (AI). Khi phát hiện người dùng khom lưng hoặc gục đầu quá lâu, hệ thống sẽ **phong tỏa toàn bộ giao diện trang web** (phong cách EOS/SEB). 
-* **Điểm đột phá:** Màn hình khóa tích hợp **khung xem trước camera AI thời gian thực** kèm bộ khung xương (Landmark Skeleton). Cách duy nhất để màn hình mở khóa là người dùng **bắt buộc phải nhìn vào camera và ngồi thẳng lưng dậy**.
+* **Vấn đề (Pain Point):** Sinh viên ngành IT, thiết kế và nhân viên văn phòng thường vô thức gù lưng, khom cổ và gục mặt sát màn hình khi tập trung làm việc. Các ứng dụng nhắc nhở thụ động (Passive Ping, Popup nhỏ) trên thị trường thường dễ dàng bị phớt lờ, gạt bỏ hoặc tắt đi trong vòng 1 giây mà không tạo ra thay đổi hành vi thực sự.
+* **Giải pháp (USP - Active Disruption):** Giám sát tư thế trực tiếp qua webcam ngầm bằng trí tuệ nhân tạo (AI). Khi phát hiện người dùng khom lưng hoặc gục đầu quá 1 giây, hệ thống sẽ **phong tỏa toàn bộ giao diện trang web** (phong cách EOS/SEB). 
+* **Điểm đột phá:** Cảnh báo sai tư thế được **lồng trực tiếp vào khung xem trước video AI thời gian thực** kèm bộ khung xương (Landmark Skeleton). Cách duy nhất để màn hình mở khóa là người dùng **bắt buộc phải nhìn vào camera và ngồi thẳng lưng dậy**.
 
 ---
 
 ## ✨ 2. Tính năng cốt lõi (Core Features)
 
-### 📹 1. Màn hình phong tỏa tích hợp Camera AI trực tiếp (Live Lock Screen)
-* Khi ngồi sai tư thế liên tục ~1 giây, trang web hiện tại lập tức bị phủ mờ (blur), khóa toàn bộ chuột & bàn phím.
-* **Lồng khung xem trước camera AI ngay trên màn hình cảnh báo**: Hiển thị luồng video gương soi chiếu cùng bộ khung xương AI (đường nối hai vai và điểm định vị mũi).
-* **Huy hiệu trạng thái thời gian thực**:
-  - `⚠️ ĐANG GÙ LƯNG` (Viền đỏ cảnh báo khi góc cổ & vai hạ thấp).
-  - `🟢 TƯ THẾ CHUẨN` (Viền xanh lá phát sáng khi người dùng ưỡn ngực, thẳng lưng).
-* **Tự động mở khóa tức thì**: Màn hình tự động biến mất ngay khi bạn điều chỉnh lại cột sống chuẩn, không làm mất bất kỳ dữ liệu biểu mẫu hay ngắt quãng công việc.
+### 📹 1. Cảnh báo sai tư thế lồng trực tiếp Video Preview AI (Live Preview Lock Screen)
+* **Khóa màn hình chủ động (Active Blocker):** Khi ngồi sai tư thế liên tục ~1 giây, trang web hiện tại lập tức bị phủ mờ (blur), khóa toàn bộ chuột & bàn phím.
+* **Lồng trực tiếp Video Preview AI vào cảnh báo:** Khung video gương soi chiếu thời gian thực được nhúng ngay giữa modal, vẽ trực quan bộ khung xương AI (đường nối hai vai và điểm định vị mũi).
+* **Banner cảnh báo tích hợp trong video:**
+  - `⚠️ CẢNH BÁO SAI TƯ THẾ!`: Banner kính mờ (frosted glass) trượt lên ngay cạnh dưới video, nhắc nhở nâng cằm và thẳng lưng.
+  - Nhãn trạng thái nổi thời gian thực: `⚠️ ĐANG GÙ LƯNG` (đỏ) ↔ `🟢 TƯ THẾ CHUẨN` (xanh lá).
+* **Mở khóa mượt mà (Graceful Unlock):** Ngay khi bạn ngồi thẳng lưng dậy, đường xương vai và banner lập tức chuyển sang màu xanh lá xác nhận trong 0.8 giây trước khi nhẹ nhàng mở khóa và hoàn trả lại trang web nguyên vẹn.
+* **Không bị lật ngược chữ (No Flipped Text):** Video và khung xương được lật gương tự nhiên (`scale(-1, 1)`), trong khi toàn bộ chữ và nhãn cảnh báo được hiển thị bằng HTML DOM vector thuần, đảm bảo chữ luôn đọc xuôi, sắc nét và rõ ràng 100%.
 
-### 🧠 2. AI Pose Tracking Offline 100% (Bảo vệ quyền riêng tư tuyệt đối)
+### 🎛️ 2. Trang Cài đặt Dashboard & Kiểm tra Camera thông minh
+* **Giao diện Dark Glassmorphism** hiện đại, hiển thị trực quan trạng thái kết nối phần cứng webcam (`ĐANG GIÁM SÁT`, `ĐANG KẾT NỐI...`, `LỖI CAMERA`, `ĐÃ TẮT`).
+* **Live Camera Preview với Cảnh báo gù lưng tích hợp:**
+  - Bật xem trước để kiểm tra góc camera, đường xương vai và điểm mũi.
+  - Khi gù lưng: Khung preview phát hiệu ứng viền đỏ xung nhịp (`.slouching`) và trượt banner cảnh báo nhắc nhở trực tiếp bên trong video.
+  - **Tự động kích hoạt Preview:** Nếu bạn đang ở trang Cài đặt mà bị gù lưng, hệ thống sẽ tự động bật luồng camera preview kèm cảnh báo để bạn theo dõi và điều chỉnh ngay lập tức.
+* **Kiến trúc Zero-Conflict (Độc quyền xử lý Webcam Windows):** Worker ngầm nắm giữ phần cứng camera 24/7 và stream trực tiếp frame sang trang Cài đặt và Màn hình khóa, loại bỏ hoàn toàn lỗi xung đột thiết bị (`NotReadableError` / `DOMException`).
+* **Thanh trượt tinh chỉnh độ nhạy (Slouch Threshold):** Cho phép điều chỉnh ngưỡng khoảng cách Mũi - Vai (mặc định: `0.22`) để tương thích với nhiều góc đặt laptop/webcam xa hay gần.
+
+### 🧠 3. AI Pose Tracking Offline 100% (Bảo vệ quyền riêng tư tuyệt đối)
 * Sử dụng mô hình **Google MediaPipe Pose** chạy hoàn toàn trên trình duyệt thông qua WebAssembly (WASM SIMD).
-* **Không gửi bất kỳ hình ảnh hay video nào ra máy chủ bên ngoài**: Tất cả quá trình xử lý diễn ra trực tiếp trên thiết bị (Client-side / On-device AI).
+* **Tuyệt đối không gửi hình ảnh/video ra internet:** Tất cả quá trình xử lý diễn ra trực tiếp trên bộ nhớ RAM của thiết bị (On-device AI).
 * Hoạt động trơn tru 24/7 trong nền bằng kiến trúc **Chrome Offscreen Document**, không bao giờ bị Chrome đóng băng khi chuyển tab.
-
-### 🎛️ 3. Trang Cài đặt Dashboard & Kiểm tra Camera
-* Giao diện **Dark Glassmorphism** hiện đại, hiển thị trực quan trạng thái kết nối phần cứng webcam (`ĐANG GIÁM SÁT`, `ĐANG KẾT NỐI...`, `LỖI CAMERA`, `ĐÃ TẮT`).
-* **Tính năng Live Preview**: Cho phép xem trước góc máy, kiểm tra đường xương vai và điểm mũi AI trước khi làm việc.
-* **Kiến trúc Zero-Conflict**: Worker ngầm nắm giữ camera và stream trực tiếp frame sang trang cài đặt, giải quyết triệt để lỗi xung đột phần cứng webcam (`NotReadableError` / `DOMException`) thường gặp trên hệ điều hành Windows.
-* **Thanh trượt tinh chỉnh độ nhạy (Slouch Threshold)**: Cho phép điều chỉnh ngưỡng khoảng cách Mũi - Vai (mặc định: `0.22`) để tương thích với nhiều góc đặt laptop/webcam xa hay gần.
 
 ### 🦐 4. Cơ chế Thử thách 12 Lần Kỷ luật (StayFocusd Style)
 * Bật bảo vệ: **1-Click là kích hoạt ngay**.
 * **Muốn TẮT bảo vệ? Bắt buộc vượt qua 12 cấp độ thử thách "nhây nhây"**:
-  - Từng bước cảnh báo "chửi xéo" cay độc về dáng ngồi con tôm luộc, chi phí 100 triệu mổ thoát vị đĩa đệm, đốt sống L4-L5 kêu cứu...
+  - Từng bước cảnh báo châm biếm sâu cay về dáng ngồi con tôm luộc, chi phí 100 triệu mổ thoát vị đĩa đệm, đốt sống L4-L5 kêu cứu...
   - Animation rung lắc răn đe và thanh tiến trình đòi hỏi bạn phải nhấn xác nhận kiên trì đủ 12 lần mới thực sự cho phép tắt hệ sinh thái giám sát.
 
-### ⚡ 5. Tự động tiêm Script (Auto Script Injection)
-* Tự động tiêm content script vào mọi tab web đang mở ngay khi cài đặt hoặc reload tiện ích thông qua `chrome.scripting`.
-* Người dùng **không cần phải F5 tải lại các tab thủ công** để tính năng bảo vệ có hiệu lực.
+### ⚡ 5. Tiêm Script thông minh & Khôi phục nóng (Hot Re-injection)
+* Tự động tiêm content script vào mọi tab web đang mở ngay khi cài đặt hoặc nạp lại tiện ích thông qua `chrome.scripting`.
+* Tự động phát hiện và tiêm script bù nếu tab web mới mở chưa kịp nạp content script khi có sự kiện khóa màn hình.
+* Người dùng **không cần phải F5 tải lại các tab thủ công** sau khi cập nhật tiện ích.
 
 ---
 
@@ -56,7 +62,7 @@
 | :--- | :--- |
 | **Nền tảng** | Google Chrome Extension (Manifest V3) |
 | **AI Model** | Google MediaPipe Pose (WebAssembly + SIMD + WebGL Context) |
-| **Frontend UI** | HTML5, Vanilla JavaScript (ES6+), CSS3 (Glassmorphism, Animations) |
+| **Frontend UI** | HTML5, Vanilla JavaScript (ES6+), Vanilla CSS3 (Glassmorphism, Micro-animations) |
 | **Tiến trình ngầm** | Chrome Service Worker (`background.js`) & Chrome Offscreen API (`offscreen.js`) |
 | **Bảo mật & Phân quyền** | CSP `script-src 'self' 'wasm-unsafe-eval'`, Permissions: `offscreen`, `tabs`, `storage`, `scripting` |
 
@@ -82,11 +88,14 @@ cd structure-enforcer
 3. Nếu xuất hiện thông báo vàng, bấm **"Cấp quyền & Kích hoạt Camera ngay"** và chọn **Cho phép (Allow)** trên cửa sổ thông báo của Chrome.
 4. Khi thấy Badge hiển thị **"ON" (màu xanh lá)** và đèn LED phần cứng webcam sáng lên: Hệ thống đã chính thức kích hoạt chế độ bảo vệ cột sống!
 
-### Bước 4: Kiểm chứng cơ chế khóa
-1. Mở bất kỳ trang web nào (ví dụ: YouTube, Facebook, Google, Báo điện tử...).
-2. Thử ngồi khom lưng, cúi đầu xuống thấp khoảng 1 giây.
-3. Màn hình sẽ lập tức bị phong tỏa mờ, hiển thị giao diện camera AI đang bắt lỗi gù lưng.
-4. Hãy ngồi thẳng lưng, ưỡn ngực và nâng cằm lên: Màn hình sẽ **tự động mở khóa** ngay lập tức!
+### Bước 4: Kiểm chứng cơ chế cảnh báo lồng Video Preview
+1. **Kiểm tra trên trang Cài đặt:**
+   - Bấm "Bật xem trước camera". Thử cúi gục đầu xuống bàn: Khung preview sẽ nhấp nháy viền đỏ và trượt lên banner **"⚠️ CẢNH BÁO SAI TƯ THẾ!"**.
+   - Ngồi thẳng lưng và nâng cằm lên: Banner tự động ẩn và nhãn chuyển sang **"🟢 TƯ THẾ CHUẨN"**.
+2. **Kiểm tra trên tab web bất kỳ (ví dụ: YouTube, Facebook, Google...):**
+   - Chuyển sang tab web và thử cúi đầu khom lưng khoảng 1 giây.
+   - Toàn bộ trang web bị phong tỏa mờ, chính giữa là khung **Video Preview AI trực tiếp** hiển thị đường xương vai và điểm mũi của bạn.
+   - Ngồi thẳng lưng dậy: Đường xương vai đổi sang màu xanh lá và màn hình **tự động mở khóa** ngay lập tức!
 
 ---
 
@@ -95,13 +104,13 @@ cd structure-enforcer
 ```text
 posture-extension/
 ├── manifest.json                           # Cấu hình tiện ích Manifest V3 & phân quyền
-├── background.js                           # Service Worker điều phối tin nhắn trung tâm
-├── content.js                              # Lớp phủ phong tỏa trang web kèm camera preview
-├── settings.html                           # Giao diện Dashboard & Thử thách 12 bước
-├── settings.css                            # Phong cách Dark mode & hiệu ứng rung lắc modal
-├── settings.js                             # Logic điều khiển Dashboard & truyền luồng frame
+├── background.js                           # Service Worker điều phối tin nhắn & chuyển tiếp frame
+├── content.js                              # Lớp phủ phong tỏa trang web kèm Video Preview lồng ghép
+├── settings.html                           # Giao diện Dashboard, Xem trước camera & Thử thách 12 bước
+├── settings.css                            # Phong cách Dark Glassmorphism, animation rung lắc & viền cảnh báo
+├── settings.js                             # Logic điều khiển Dashboard, tự động kích hoạt preview khi gù lưng
 ├── offscreen.html                          # Trang chạy ngầm giữ webcam & nạp MediaPipe Pose
-├── offscreen.js                            # Xử lý tính toán Mũi - Vai và stream hình ảnh AI
+├── offscreen.js                            # Xử lý tính toán Mũi - Vai, lật gương và stream frame AI
 ├── LICENSE                                 # Giấy phép mã nguồn mở Apache License 2.0
 ├── Readme.md                               # Tài liệu hướng dẫn dự án
 │
